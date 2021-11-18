@@ -1,10 +1,43 @@
 # Author: Kohl Morris
-import numpy as np
+import math
 
-# currently random
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import datetime
+
+
 def getData():
-    x = [np.random.randn() for i in range(1000)]
-    return x
+    Data = pd.read_csv(r"log_2020_08_17-07_28_57_BB.csv")
+    return Data
+
+
+def fixDtNP(data, start, end):
+    # create timestamps
+    newData = [[], []]
+    newData[0].append(datetime.datetime(2020, 8, 17, 7, 28, 57))
+    newData[1].append(data[0][1])
+    for i in range(len(data) - 1):
+        # data[i+1][0] = data.values[i][0] + datetime.timedelta(milliseconds=data.values[i][1])
+        newData[1].append(data[i+1][1])
+        newData[0].append(newData[0][i] + datetime.timedelta(milliseconds=newData[1][i]))
+
+    # slice
+    sHr = int(start[0:2])
+    sMi = int(start[3:5])
+    eHr = int(end[0:2])
+    eMi = int(end[3:5])
+    stInd = 0  # start index
+    enInd = 10  # end index
+    for i in range(len(data)):
+        if newData[0][i].hour == sHr and newData[0][i].minute == sMi:
+            stInd = i
+        if newData[0][i].hour == eHr and newData[0][i].minute == eMi:
+            enInd = i
+    # return data[stInd:enInd]
+    sl1 = newData[0][stInd:enInd]
+    sl2 = newData[1][stInd:enInd]
+    return [sl1, sl2]
 
 
 # reconstruct the phase space given embedding dimension and data
@@ -18,7 +51,54 @@ def reconstructX(data, dim):
     return X
 
 
+def SVD(X):
+    npX = np.array(X)
+    npXt = np.transpose(npX)
+
+    npXXt = np.matmul(npX, npXt)
+    npXtX = np.matmul(npXt, npX)
+
+    Uval, npU = np.linalg.eig(npXXt)
+    Vval, npV = np.linalg.eig(npXtX)
+
+    # reorganize U and V
+    # selection sort
+    Ut = np.ndarray.tolist(np.transpose(npU))
+    for i in range(len(Uval) - 1):
+        min = i
+        for j in range(i+1, len(Uval)):
+            if Uval[min] < Uval[j]:
+                min = j
+        Uval[i], Uval[min] = Uval[min], Uval[i]
+        Ut[i], Ut[min] = Ut[min], Ut[i]
+    npU = np.transpose(np.array(Ut))
+
+    Vt = np.ndarray.tolist(np.transpose(npV))
+    for i in range(len(Vval) - 1):
+        min = i
+        for j in range(i + 1, len(Vval)):
+            if Vval[min] < Vval[j]:
+                min = j
+        Vval[i], Vval[min] = Vval[min], Vval[i]
+        Vt[i], Vt[min] = Vt[min], Vt[i]
+    npV = np.transpose(np.array(Vt))
+
+    # Sigma will be denoted as S
+    # for i in range(len(Uval)):
+    #     Uval[i] = math.sqrt(Uval[i])
+    # S = np.diag(Vval)
+    return npU, Uval, npV
+
+
+
+
 if __name__ == '__main__':
-    print("hi")
-    X = reconstructX(getData(), 3)
-    print(X)
+    dt = getData()
+    data = fixDtNP(pd.DataFrame.to_numpy(dt), "10:30", "12:30")
+
+    X = reconstructX(data[1], 3)
+    U, S, V = SVD(X)
+    for i in range(10):
+        print(S[i])
+
+    u, s, v = np.linalg.svd(X)
