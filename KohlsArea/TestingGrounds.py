@@ -37,6 +37,8 @@ def fixDtNP(data, start, end):
     # return data[stInd:enInd]
     sl1 = newData[0][stInd:enInd]
     sl2 = newData[1][stInd:enInd]
+
+
     return [sl1, sl2]
 
 
@@ -58,6 +60,7 @@ def SVD(X):
     npXXt = np.matmul(npX, npXt)
     npXtX = np.matmul(npXt, npX)
 
+    print(npXXt)
     Uval, npU = np.linalg.eig(npXXt)
     Vval, npV = np.linalg.eig(npXtX)
 
@@ -87,7 +90,7 @@ def SVD(X):
     # for i in range(len(Uval)):
     #     Uval[i] = math.sqrt(Uval[i])
     # S = np.diag(Vval)
-    return npU, Uval, npV
+    return npU, Vval, npV
 
 
 
@@ -98,7 +101,4 @@ if __name__ == '__main__':
 
     X = reconstructX(data[1], 3)
     U, S, V = SVD(X)
-    for i in range(10):
-        print(S[i])
-
     u, s, v = np.linalg.svd(X)
