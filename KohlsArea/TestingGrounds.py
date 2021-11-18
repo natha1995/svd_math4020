@@ -1,5 +1,6 @@
-# Author: Kohl Morris
 import numpy as np
+import matplotlib.pyplot as plt
+
 
 # currently random
 def getData():
