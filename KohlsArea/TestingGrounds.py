@@ -38,6 +38,14 @@ def fixDtNP(data, start, end):
     sl1 = newData[0][stInd:enInd]
     sl2 = newData[1][stInd:enInd]
 
+    '''
+    # center data
+    sum = 0
+    for i in range(len(sl2)):
+        sum = sum + sl2[i]
+    mean = sum / len(sl2)
+    for i in range(len(sl2)):
+        sl2[i] = sl2[i] - mean # '''
 
     return [sl1, sl2]
 
@@ -60,7 +68,6 @@ def SVD(X):
     npXXt = np.matmul(npX, npXt)
     npXtX = np.matmul(npXt, npX)
 
-    print(npXXt)
     Uval, npU = np.linalg.eig(npXXt)
     Vval, npV = np.linalg.eig(npXtX)
 
@@ -87,10 +94,11 @@ def SVD(X):
     npV = np.transpose(np.array(Vt))
 
     # Sigma will be denoted as S
-    # for i in range(len(Uval)):
-    #     Uval[i] = math.sqrt(Uval[i])
-    # S = np.diag(Vval)
-    return npU, Vval, npV
+    # 1943 * 3
+    S = [[0 for i in range(len(Vval))] for j in range(len(Uval))]
+    for i in range(len(Vval)):
+        S[i][i] = math.sqrt(Vval[i])
+    return npU, S, npV
 
 
 
@@ -101,4 +109,30 @@ if __name__ == '__main__':
 
     X = reconstructX(data[1], 3)
     U, S, V = SVD(X)
-    u, s, v = np.linalg.svd(X)
+    x = np.matmul(U, S)
+    x = np.matmul(x, np.transpose(V))
+    # fix x
+    fixX = [ [0 for i in range(len(x[0]))] for j in range(len(x))]
+    for i in range(len(x)):
+        for j in range(len(x[0])):
+            fixX[i][len(x[0])-1-j] = -1 * x[i][j].real
+
+
+    print("x")
+    print(fixX)
+    print("OR:")
+    npX = np.array(X)
+    print(npX)
+    diffX = fixX - npX
+    print("Diff")
+    print(diffX)
+
+
+    '''u, s, v = np.linalg.svd(X)
+    s1 = [[0 for i in range(len(v))] for j in range(len(u))]
+    for i in range(len(s)):
+        s1[i][i] = math.sqrt(s[i])
+    y = np.matmul(u, s1)
+    y = np.matmul(y, v)
+    print("y")
+    print(y)'''
