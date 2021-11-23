@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import datetime
+import scipy.linalg as sp
 
 
 def getData():
@@ -50,6 +51,31 @@ def fixDtNP(data, start, end):
     return [sl1, sl2]
 
 
+def orgSort():
+    '''# reorganize U and V
+        # selection sort
+        Ut = np.ndarray.tolist(np.transpose(npU))
+        for i in range(len(Uval) - 1):
+            max = i
+            for j in range(i+1, len(Uval)):
+                if Uval[max].real < Uval[j].real:
+                    max = j
+            Uval[i], Uval[max] = Uval[max], Uval[i]
+            Ut[i], Ut[max] = Ut[max], Ut[i]
+        npU = np.transpose(np.array(Ut))
+
+        Vt = np.ndarray.tolist(np.transpose(npV))
+        for i in range(len(Vval) - 1):
+            max = i
+            for j in range(i + 1, len(Vval)):
+                if Vval[max] < Vval[j]:
+                    max = j
+            Vval[i], Vval[max] = Vval[max], Vval[i]
+            Vt[i], Vt[max] = Vt[max], Vt[i]
+        npV = np.transpose(np.array(Vt))'''
+    print()
+
+
 # reconstruct the phase space given embedding dimension and data
 def reconstructX(data, dim):
     X = []
@@ -59,6 +85,17 @@ def reconstructX(data, dim):
             x.append(data[i + j])
         X.append(x)
     return X
+
+
+def orthonormalize(vector):
+    sumSQ = 0
+    for i in range(len(vector)):
+        sumSQ = sumSQ + vector[i] * vector[i]
+    normal = vector
+    for i in range(len(vector)):
+        normal[i] = vector[i] / math.sqrt(sumSQ)
+    print(normal)
+    return normal
 
 
 def SVD(X):
@@ -71,68 +108,51 @@ def SVD(X):
     Uval, npU = np.linalg.eig(npXXt)
     Vval, npV = np.linalg.eig(npXtX)
 
-    # reorganize U and V
-    # selection sort
-    Ut = np.ndarray.tolist(np.transpose(npU))
-    for i in range(len(Uval) - 1):
-        min = i
-        for j in range(i+1, len(Uval)):
-            if Uval[min] < Uval[j]:
-                min = j
-        Uval[i], Uval[min] = Uval[min], Uval[i]
-        Ut[i], Ut[min] = Ut[min], Ut[i]
-    npU = np.transpose(np.array(Ut))
-
-    Vt = np.ndarray.tolist(np.transpose(npV))
-    for i in range(len(Vval) - 1):
-        min = i
-        for j in range(i + 1, len(Vval)):
-            if Vval[min] < Vval[j]:
-                min = j
-        Vval[i], Vval[min] = Vval[min], Vval[i]
-        Vt[i], Vt[min] = Vt[min], Vt[i]
-    npV = np.transpose(np.array(Vt))
+    npuR = [[0 for j in range(len(npU[0]))] for i in range(len(npU))]   # the real parts of npU
+    for i in range(len(npU)):
+        for j in range(len(npU[0])):
+            npuR[i][j] = npU[i][j].real
+    uValR = [ 0 for i in range(len(Uval))]  # the real parts of Uval
+    for i in range(len(uValR)):
+        uValR[i] = Uval[i].real
 
     # Sigma will be denoted as S
-    # 1943 * 3
+    uvs = np.argsort(uValR)     # sort eigenvalues in ascending order
+    uflip = np.flip(uvs)        # reverse
+    vvs = np.argsort(Vval)      # sort eigenvalues in ascending order
+    vflip = np.flip(vvs)        # reverse
+    newU = np.transpose(np.array(np.transpose(npuR))[uflip])    # sort
+    newV = np.transpose(np.array(np.transpose(npV))[vflip])     # sort
+    newVal = np.array(Vval)[vflip]  # sort
+
+
     S = [[0 for i in range(len(Vval))] for j in range(len(Uval))]
-    for i in range(len(Vval)):
-        S[i][i] = math.sqrt(Vval[i])
-    return npU, S, npV
-
-
+    for i in range(len(newVal)):
+        S[i][i] = math.sqrt(newVal[i].real)
+    return newU, S, newV
 
 
 if __name__ == '__main__':
     dt = getData()
-    data = fixDtNP(pd.DataFrame.to_numpy(dt), "10:30", "12:30")
+    data = fixDtNP(pd.DataFrame.to_numpy(dt), "10:30", "10:31")
 
     X = reconstructX(data[1], 3)
     U, S, V = SVD(X)
-    x = np.matmul(U, S)
-    x = np.matmul(x, np.transpose(V))
+    x1 = np.matmul(U, S)
+    x = np.matmul(x1, np.transpose(V))
+    # print(x)
     # fix x
     fixX = [ [0 for i in range(len(x[0]))] for j in range(len(x))]
     for i in range(len(x)):
         for j in range(len(x[0])):
-            fixX[i][len(x[0])-1-j] = -1 * x[i][j].real
+            # fixX[i][len(x[0])-1-j] = -1 * x[i][j].real
+            fixX[i][j] = math.floor(x[i][j].real)
+    u, s, vt = np.linalg.svd(X, full_matrices=True)
+    print()
 
-
-    print("x")
-    print(fixX)
+    '''print("x")
+    print(x)
     print("OR:")
     npX = np.array(X)
-    print(npX)
-    diffX = fixX - npX
-    print("Diff")
-    print(diffX)
+    print(npX)  # '''
 
-
-    '''u, s, v = np.linalg.svd(X)
-    s1 = [[0 for i in range(len(v))] for j in range(len(u))]
-    for i in range(len(s)):
-        s1[i][i] = math.sqrt(s[i])
-    y = np.matmul(u, s1)
-    y = np.matmul(y, v)
-    print("y")
-    print(y)'''
