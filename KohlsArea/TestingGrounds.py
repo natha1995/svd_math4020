@@ -1,15 +1,14 @@
 # Author: Kohl Morris
 import math
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import datetime
-import scipy.linalg as sp
 
 
 def getData():
-    Data = pd.read_csv(r"log_2020_08_17-07_28_57_BB.csv")
+    # Data = pd.read_csv(r"log_2020_08_17-07_28_57_BB.csv")
+    Data = pd.read_csv(r"log_2020_09_21-07_14_29_BB.csv")
     return Data
 
 
@@ -39,41 +38,7 @@ def fixDtNP(data, start, end):
     sl1 = newData[0][stInd:enInd]
     sl2 = newData[1][stInd:enInd]
 
-    '''
-    # center data
-    sum = 0
-    for i in range(len(sl2)):
-        sum = sum + sl2[i]
-    mean = sum / len(sl2)
-    for i in range(len(sl2)):
-        sl2[i] = sl2[i] - mean # '''
-
     return [sl1, sl2]
-
-
-def orgSort():
-    '''# reorganize U and V
-        # selection sort
-        Ut = np.ndarray.tolist(np.transpose(npU))
-        for i in range(len(Uval) - 1):
-            max = i
-            for j in range(i+1, len(Uval)):
-                if Uval[max].real < Uval[j].real:
-                    max = j
-            Uval[i], Uval[max] = Uval[max], Uval[i]
-            Ut[i], Ut[max] = Ut[max], Ut[i]
-        npU = np.transpose(np.array(Ut))
-
-        Vt = np.ndarray.tolist(np.transpose(npV))
-        for i in range(len(Vval) - 1):
-            max = i
-            for j in range(i + 1, len(Vval)):
-                if Vval[max] < Vval[j]:
-                    max = j
-            Vval[i], Vval[max] = Vval[max], Vval[i]
-            Vt[i], Vt[max] = Vt[max], Vt[i]
-        npV = np.transpose(np.array(Vt))'''
-    print()
 
 
 # reconstruct the phase space given embedding dimension and data
@@ -85,17 +50,6 @@ def reconstructX(data, dim):
             x.append(data[i + j])
         X.append(x)
     return X
-
-
-def orthonormalize(vector):
-    sumSQ = 0
-    for i in range(len(vector)):
-        sumSQ = sumSQ + vector[i] * vector[i]
-    normal = vector
-    for i in range(len(vector)):
-        normal[i] = vector[i] / math.sqrt(sumSQ)
-    print(normal)
-    return normal
 
 
 def SVD(X):
@@ -127,32 +81,87 @@ def SVD(X):
 
 
     S = [[0 for i in range(len(Vval))] for j in range(len(Uval))]
-    for i in range(len(newVal)):
-        S[i][i] = math.sqrt(newVal[i].real)
+    if len(newVal) > len(Uval):
+        min = len(Uval)
+    else:
+        min = len(newVal)
+    for i in range(min):
+        if newVal[i].real > 0:
+            S[i][i] = math.sqrt(newVal[i].real)
+        else:
+            S[i][i] = 0
     return newU, S, newV
+
+
+def centerData(X):
+    newX = [[0 for i in range(len(X[0]))] for j in range(len(X))]
+    for i in range(len(X[0])):
+        sum = 0
+        for j in range(len(X)):
+           sum = sum + X[j][i]
+        mean = sum / len(X)
+        for j in range(len(X)):
+           newX[j][i] = X[j][i] - mean
+        sumDev = 0
+        for j in range(len(X)):
+           sumDev = sumDev + newX[j][i] ** 2
+        stdDev = math.sqrt(sumDev / len(X))
+        for j in range(len(X)):
+           newX[j][i] = newX[j][i] / stdDev
+    return newX
+
+
+def getFirstCol(X):
+    col = []
+    for i in range(len(X)):
+        col.append(X[i][0])
+    return col
 
 
 if __name__ == '__main__':
     dt = getData()
-    data = fixDtNP(pd.DataFrame.to_numpy(dt), "10:30", "10:31")
+    data = fixDtNP(pd.DataFrame.to_numpy(dt), "10:30", "10:35")
 
-    X = reconstructX(data[1], 3)
+
+    X = reconstructX(data[1], 9)
+    # centered = centerData(X)
     U, S, V = SVD(X)
     x1 = np.matmul(U, S)
     x = np.matmul(x1, np.transpose(V))
-    # print(x)
-    # fix x
-    fixX = [ [0 for i in range(len(x[0]))] for j in range(len(x))]
-    for i in range(len(x)):
-        for j in range(len(x[0])):
-            # fixX[i][len(x[0])-1-j] = -1 * x[i][j].real
-            fixX[i][j] = math.floor(x[i][j].real)
-    u, s, vt = np.linalg.svd(X, full_matrices=True)
-    print()
+    if(x[0][0] < 0):
+        x = x * -1 # '''
 
-    '''print("x")
-    print(x)
-    print("OR:")
-    npX = np.array(X)
-    print(npX)  # '''
+    Sd = []
+    if len(U) > len(V):
+        mini = len(V)
+    else:
+        mini = len(U)
+    for i in range(mini):
+        Sd.append(S[i][i])
+    totVar = 0 # total variance
+    for i in range(len(V)):
+        totVar = totVar + Sd[i] * Sd[i]
+    totVar = totVar / (len(V) - 1)
+    for i in range(len(Sd)):
+        Sd[i] = abs(Sd[i] / totVar)
+    # plt.yscale('log')
+    # plt.plot(Sd, 'o-')
+    # plt.show()
+
+
+    fc = getFirstCol(X) # get the first column
+    plt.plot(fc, label='Original')
+    tempS = [[0 for i in range(len(V))] for j in range(len(U))]
+    mi = min(len(V), len(U))
+    for i in range(mi):
+        tempS[i][i] = S[i][i]
+        xtemp = np.matmul(U, tempS)
+        xtemp = np.matmul(xtemp, V.T)
+        if xtemp[0][0] < 0:
+            xtemp = xtemp * -1
+        col = getFirstCol(xtemp)
+        string = "" + str(i+1)
+        plt.plot(col, label=string)
+    plt.legend()
+    plt.show() # '''
 
